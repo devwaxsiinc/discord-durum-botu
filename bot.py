@@ -3,8 +3,7 @@ from discord.ext import commands
 import os
 
 # --- AYARLAR ---
-# Koyeb kullanıyorsan TOKEN kısmını 'os.getenv' ile bırak, paneldin ayarla.
-# Eğer bilgisayarda deneyeceksen tırnak içine tokenini yazabilirsin.
+# Koyeb'de Environment Variables kısmına "BOT_TOKEN" isminde ekle.
 TOKEN = os.getenv('BOT_TOKEN') or 'BURAYA_TOKENINI_YAZABILIRSIN'
 
 HEDEF_DURUM = ".gg/E6BPFM6GRY" 
@@ -16,18 +15,23 @@ LOG_KANAL_ID = 1456242599089406025
 intents = discord.Intents.default()
 intents.presences = True      # Durumları takip etmek için
 intents.members = True        # Rol vermek ve üyeleri tanımak için
-intents.message_content = True # Başlangıçtaki uyarı hatasını almamak için
+intents.message_content = True 
 
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 @bot.event
 async def on_ready():
+    # --- İSTEDİĞİN GÖRSELDEKİ DURUM AYARI ---
+    # Botun kendisi de Rahatsız Etmeyin modunda ve taçlı görünür
+    custom_status = discord.CustomActivity(name="👑 .gg/E6BPFM6GRY")
+    await bot.change_presence(status=discord.Status.dnd, activity=custom_status)
+    
     print(f'📢 Bot {bot.user} olarak başarıyla bağlandı!')
     print(f'🔍 Takip edilen kelime: {HEDEF_DURUM}')
+    print(f'🚀 Botun durumu ayarlandı: 👑 .gg/E6BPFM6GRY')
 
 @bot.event
 async def on_presence_update(before, after):
-    # Botun bir sunucu içinde olup olmadığını kontrol edelim
     guild = after.guild
     if guild is None:
         return
@@ -35,15 +39,12 @@ async def on_presence_update(before, after):
     role = guild.get_role(ROL_ID)
     log_channel = bot.get_channel(LOG_KANAL_ID)
 
-    # Rol veya kanal bulunamazsa hata vermemesi için kontrol
     if not role:
         return
 
-    # Kullanıcının yeni durumunda hedef metin var mı?
     has_status = False
     for activity in after.activities:
         if isinstance(activity, discord.CustomActivity):
-            # activity.name bazen None dönebilir, o yüzden kontrol ediyoruz
             status_text = ""
             if activity.name:
                 status_text += activity.name
@@ -54,23 +55,21 @@ async def on_presence_update(before, after):
                 has_status = True
                 break
 
-    # Rol İşlemleri
     try:
         if has_status:
-            # Durumunda yazı var ve rolü yoksa rolü ver
             if role not in after.roles:
                 await after.add_roles(role)
                 print(f"✅ {after} durumuna ekledi, rol verildi.")
         else:
-            # Durumunda yazı YOK ama rolü VARSA rolü al ve mesaj at
             if role in after.roles:
                 await after.remove_roles(role)
                 print(f"❌ {after} durumdan sildi, rol alındı.")
                 if log_channel:
                     await log_channel.send(f"{after.mention} durum fix")
     except discord.Forbidden:
-        print(f"⚠️ HATA: {after.name} kullanıcısına rol verme yetkim yok! Botun rolü yukarıda olmalı.")
+        print(f"⚠️ HATA: Botun rolü yetersiz!")
     except Exception as e:
         print(f"⚠️ Bir hata oluştu: {e}")
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    bot.run(TOKEN)
